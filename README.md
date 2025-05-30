@@ -4,27 +4,40 @@ segít, hogy a hirdetési paraméterek ne vesszenek el soha
 🚀 Intelligens marketing paraméter továbbító script, amely automatikusan átviszi a tracking paramétereket a checkout (fizetési) oldalakra, megőrizve a fontos conversion tracking adatokat.
 ✨ Főbb funkciók
 
+
 🎯 Intelligens prioritásos rendszer - Sosem vesznek el a fontos tracking ID-k
+
 📧 Email marketing kompatibilis - Cookie-alapú paraméter megőrzés
+
 ⚡ Teljesítmény optimalizált - Minimális overhead, gyors futás
+
 🔒 Biztonságos - Nem zavarják meg más JavaScript kódok
+
 🌐 Multi-platform támogatás - Google, Meta, TikTok, LinkedIn, stb.
 
+
 🎬 Hogyan működik
+
 
 Első látogatás (pl. Facebook hirdetésből):
 https://landing.com?fbclid=ABC123&utm_source=facebook
 
+
 Email visszajuttatás (később):
 https://landing.com?utm_source=email&utm_campaign=newsletter
+
 
 Checkout link automatikus díszítése:
 https://checkout.com/buy?fbclid=ABC123&utm_source=email&utm_campaign=newsletter
 
 
+
 ✅ Facebook tracking ID megmaradt!
+
 ✅ Email kampány adatok frissültek!
+
 📋 Támogatott tracking paraméterek
+
 🔒 Prioritásos paraméterek (sosem íródnak felül):
 
 Google Ads: gclid, gclsrc, gbraid, wbraid
@@ -34,19 +47,25 @@ LinkedIn: li_fat_id
 Microsoft Bing: msclkid
 Twitter: twclid
 
+
 🔄 Frissíthető paraméterek:
+
 
 UTM paraméterek: utm_source, utm_medium, utm_campaign, utm_term, utm_content
 Custom paraméterek: Bármilyen egyedi paraméter
 
+
 🛠️ Telepítés
+
 1. Alapkonfiguráció
 A script elején add meg a checkout domain(ek)et:
 javascriptvar CHECKOUT_HOSTS = [
   'f.bartfaibalazs.hu',
   'sf.salesform.hu'
 ];
+
 2. HTML-be beillesztés
+
 html<head>
   <!-- Egyéb head tartalom -->
   <script>
@@ -55,48 +74,67 @@ html<head>
     })();
   </script>
 </head>
+
 3. Kész! 🎉
+
 A script automatikusan:
 
+
 Kinyeri az URL paramétereket
+
 Elmenti cookie-kba (90 napra)
+
 Díszíti a checkout linkeket
+
 Kezeli a navigációs metódusokat
 
+
 ⚙️ Testreszabás
+
 Checkout domainok hozzáadása
+
 javascriptvar CHECKOUT_HOSTS = [
   'checkout1.com',
   'checkout2.com',
   'payment.example.com'
 ];
+
 Prioritásos paraméterek módosítása
+
 javascriptvar PRIORITY_PARAMS = [
   'gclid', 'fbclid', 'ttclid', // Alapértelmezett
   'custom_id', 'affiliate_id'  // Egyedi hozzáadás
 ];
+
+
 📊 Teljesítmény
+
 
 Inicializálás: < 1ms
 Link díszítés: < 5ms (100 linknél)
 Memory footprint: < 10KB
 Korai kilépés: Ha nincsenek paraméterek, nulla overhead
 
+
 🔧 Fejlett funkciók
 Automatikus navigáció kezelés
+
 
 window.open() felülírása
 location.assign() felülírása
 location.replace() felülírása
 location.href setter felülírása
 
+
 Cookie management
+
 
 90 napos lejárat
 Automatikus encoding/decoding
 Ütközés kezelés
 
 Event-based backup
+
 
 Click listener backup
 Capture phase event handling
