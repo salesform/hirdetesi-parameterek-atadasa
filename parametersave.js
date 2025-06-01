@@ -35,6 +35,7 @@
   var cookiesSaved = false; // Cookie mentés állapot
   var prioritySet = null; // Set a prioritásos paraméterekhez
   var utmSet = null; // Set az UTM paraméterekhez
+  var processedFields = new WeakSet(); // Már feldolgozott mezők nyilvántartása
   
   // ════════════ INIT - EGYSZER FUTÓ RÉSZ ════════════
   function init(){
@@ -159,92 +160,105 @@
     return hostSet.has(host);
   }
   
-  // ════════════ UTM FORM FILLING ════════════
-  function fillUtmForms(){
-    var utmFields = [];
+  // ════════════ OPTIMALIZÁLT UTM FORM FILLING ════════════
+  function getUtmParamFromField(field) {
+    // Megvizsgáljuk a field különböző attribútumait és meghatározzuk, melyik UTM paraméterhez tartozik
+    var attributes = [
+      field.name || '',
+      field.id || '',
+      field.className || '',
+      field.getAttribute('data-utm') || '',
+      field.getAttribute('data-field') || '',
+      field.getAttribute('placeholder') || ''
+    ].join(' ').toLowerCase();
     
-    // UTM mezők keresése különböző szelektorokkal
+    // UTM paraméterek keresése az attribútumokban
+    for(var i = 0; i < UTM_PARAMS.length; i++){
+      var param = UTM_PARAMS[i];
+      var paramVariants = [
+        param,                          // utm_source
+        param.replace('_', '-'),        // utm-source  
+        param.replace('_', ''),         // utmsource
+        param.replace('utm_', ''),      // source
+        param.replace('utm_', '').replace('_', '-') // source (ha lenne underscore)
+      ];
+      
+      for(var j = 0; j < paramVariants.length; j++){
+        if(attributes.includes(paramVariants[j])){
+          return param;
+        }
+      }
+    }
+    
+    return null;
+  }
+  
+  function fillUtmForms(){
+    // Egy lépésben megkeressük az összes potenciális UTM mezőt
+    var allInputs = document.querySelectorAll('input[type="hidden"], input[type="text"], input[type="email"], input:not([type])');
+    var fieldMap = {}; // param -> [fields] mapping
+    var filledCount = 0;
+    
+    // UTM paraméterek inicializálása
     UTM_PARAMS.forEach(function(param){
-      // 1. Standard name attribútum
-      var nameFields = document.querySelectorAll('input[name="' + param + '"]');
-      
-      // 2. Standard id attribútum  
-      var idFields = document.querySelectorAll('input[id="' + param + '"]');
-      
-      // 3. Data attribútum
-      var dataFields = document.querySelectorAll('input[data-utm="' + param + '"]');
-      
-      // 4. Mautic forma: name="mauticform[utm_source]"
-      var mauticNameFields = document.querySelectorAll('input[name*="[' + param + ']"]');
-      
-      // 5. Mautic forma: id="mauticform_input_*_utm_source"
-      var mauticIdFields = document.querySelectorAll('input[id*="_' + param + '"]');
-      
-      // 6. Hubspot forma: name="utm_source" vagy name="utm-source"
-      var hubspotFields = document.querySelectorAll('input[name="' + param.replace('_', '-') + '"]');
-      
-      // 7. Általános keresés: bármilyen attribútumban szerepel a paraméter neve
-      var generalFields = document.querySelectorAll('input[name*="' + param + '"], input[id*="' + param + '"], input[class*="' + param + '"]');
-      
-      // Összegyűjtjük az összes talált mezőt
-      [].concat(
-        Array.prototype.slice.call(nameFields),
-        Array.prototype.slice.call(idFields), 
-        Array.prototype.slice.call(dataFields),
-        Array.prototype.slice.call(mauticNameFields),
-        Array.prototype.slice.call(mauticIdFields),
-        Array.prototype.slice.call(hubspotFields),
-        Array.prototype.slice.call(generalFields)
-      ).forEach(function(field){
-        // Csak input mezőket és csak rejtett vagy üres mezőket
-        if(field.tagName !== 'INPUT') return;
-        
-        // Duplikátumok elkerülése
-        var exists = false;
-        for(var i = 0; i < utmFields.length; i++){
-          if(utmFields[i].field === field){
-            exists = true;
-            break;
-          }
-        }
-        if(!exists){
-          utmFields.push({field: field, param: param});
-        }
-      });
+      fieldMap[param] = [];
     });
     
-    // Mezők kitöltése a mentett paraméterekkel
-    var filledCount = 0;
-    utmFields.forEach(function(item){
-      var field = item.field;
-      var param = item.param;
+    // Végigmegyünk az összes input mezőn egyszer
+    for(var i = 0; i < allInputs.length; i++){
+      var field = allInputs[i];
       
-      // Csak akkor töltjük ki, ha üres vagy explicit módon UTM mező
-      if(!field.value || field.type === 'hidden' || field.hasAttribute('data-utm')){
-        if(params[param]){
-          field.value = params[param];
+      // Skip ha már feldolgoztuk ezt a mezőt
+      if(processedFields.has(field)) continue;
+      
+      // Meghatározzuk, melyik UTM paraméterhez tartozik (ha egyáltalán)
+      var utmParam = getUtmParamFromField(field);
+      
+      if(utmParam && params[utmParam]){
+        // Csak akkor töltjük ki, ha üres, rejtett, vagy explicit UTM mező
+        var shouldFill = !field.value || 
+                        field.type === 'hidden' || 
+                        field.hasAttribute('data-utm') ||
+                        field.hasAttribute('data-field');
+        
+        if(shouldFill){
+          field.value = params[utmParam];
           filledCount++;
           
           // Esemény triggerelése a form library-k számára
-          try {
-            var event = new Event('input', {bubbles: true});
-            field.dispatchEvent(event);
-          } catch(e) {
-            // Fallback régebbi böngészőkhöz
-            try {
-              var event = document.createEvent('Event');
-              event.initEvent('input', true, true);
-              field.dispatchEvent(event);
-            } catch(e2) {
-              // Silent fail
-            }
-          }
+          triggerInputEvent(field);
+          
+          // Megjelöljük feldolgozottként
+          processedFields.add(field);
         }
       }
-    });
+    }
     
     if(filledCount > 0){
       console.log('UTM tracking: ' + filledCount + ' mező kitöltve');
+    }
+  }
+  
+  function triggerInputEvent(field){
+    try {
+      // Modern böngészőkhöz
+      var inputEvent = new Event('input', {bubbles: true});
+      var changeEvent = new Event('change', {bubbles: true});
+      field.dispatchEvent(inputEvent);
+      field.dispatchEvent(changeEvent);
+    } catch(e) {
+      // Fallback régebbi böngészőkhöz
+      try {
+        var inputEvent = document.createEvent('Event');
+        inputEvent.initEvent('input', true, true);
+        field.dispatchEvent(inputEvent);
+        
+        var changeEvent = document.createEvent('Event');
+        changeEvent.initEvent('change', true, true);
+        field.dispatchEvent(changeEvent);
+      } catch(e2) {
+        // Silent fail
+      }
     }
   }
   
