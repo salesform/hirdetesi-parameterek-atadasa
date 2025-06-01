@@ -165,19 +165,40 @@
     
     // UTM mezők keresése különböző szelektorokkal
     UTM_PARAMS.forEach(function(param){
-      // name attribútum alapján
+      // 1. Standard name attribútum
       var nameFields = document.querySelectorAll('input[name="' + param + '"]');
-      // id attribútum alapján  
+      
+      // 2. Standard id attribútum  
       var idFields = document.querySelectorAll('input[id="' + param + '"]');
-      // data attribútum alapján
+      
+      // 3. Data attribútum
       var dataFields = document.querySelectorAll('input[data-utm="' + param + '"]');
+      
+      // 4. Mautic forma: name="mauticform[utm_source]"
+      var mauticNameFields = document.querySelectorAll('input[name*="[' + param + ']"]');
+      
+      // 5. Mautic forma: id="mauticform_input_*_utm_source"
+      var mauticIdFields = document.querySelectorAll('input[id*="_' + param + '"]');
+      
+      // 6. Hubspot forma: name="utm_source" vagy name="utm-source"
+      var hubspotFields = document.querySelectorAll('input[name="' + param.replace('_', '-') + '"]');
+      
+      // 7. Általános keresés: bármilyen attribútumban szerepel a paraméter neve
+      var generalFields = document.querySelectorAll('input[name*="' + param + '"], input[id*="' + param + '"], input[class*="' + param + '"]');
       
       // Összegyűjtjük az összes talált mezőt
       [].concat(
         Array.prototype.slice.call(nameFields),
         Array.prototype.slice.call(idFields), 
-        Array.prototype.slice.call(dataFields)
+        Array.prototype.slice.call(dataFields),
+        Array.prototype.slice.call(mauticNameFields),
+        Array.prototype.slice.call(mauticIdFields),
+        Array.prototype.slice.call(hubspotFields),
+        Array.prototype.slice.call(generalFields)
       ).forEach(function(field){
+        // Csak input mezőket és csak rejtett vagy üres mezőket
+        if(field.tagName !== 'INPUT') return;
+        
         // Duplikátumok elkerülése
         var exists = false;
         for(var i = 0; i < utmFields.length; i++){
