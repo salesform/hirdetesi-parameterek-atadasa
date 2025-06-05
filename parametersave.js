@@ -176,11 +176,11 @@
     for(var i = 0; i < UTM_PARAMS.length; i++){
       var param = UTM_PARAMS[i];
       var paramVariants = [
-        param,                          // utm_source
-        param.replace('_', '-'),        // utm-source  
-        param.replace('_', ''),         // utmsource
-        param.replace('utm_', ''),      // source
-        param.replace('utm_', '').replace('_', '-') // source (ha lenne underscore)
+        param,                           // utm_source
+        param.replace(/_/g, '-'),        // utm-source
+        param.replace(/_/g, ''),         // utmsource
+        param.replace(/^utm_/, ''),      // source
+        param.replace(/^utm_/, '').replace(/_/g, '-') // source (ha lenne underscore)
       ];
       
       for(var j = 0; j < paramVariants.length; j++){
@@ -333,14 +333,17 @@
   // ════════════ NAVIGATION OVERRIDES ════════════
   function overrideNavMethods(){
     var originalOpen = window.open;
-    window.open = function(url){
+    window.open = function(){
+      var args = Array.prototype.slice.call(arguments);
+      var url = args[0];
       try{
-        var u = new URL(url);
+        var u = new URL(url, location.href);
         if(isCheckoutHost(u.host)){
-          return originalOpen.call(this, decorateUrl(url));
+          args[0] = decorateUrl(url);
+          return originalOpen.apply(this, args);
         }
       }catch(e){}
-      return originalOpen.call(this, url);
+      return originalOpen.apply(this, args);
     };
     
     ['assign', 'replace'].forEach(function(method){
